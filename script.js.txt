@@ -1,0 +1,172 @@
+// ---------- CORE RPG ----------
+let xp = 0;
+let streak = 0;
+
+function gainXP(amount, text="XP"){
+  xp += amount;
+  streak++;
+  document.getElementById("xp").textContent = xp;
+  document.getElementById("streak").textContent = streak;
+  document.getElementById("progress-bar").style.width = Math.min(100, xp)+"%";
+  showBadge(`+${amount} ${text}`);
+}
+
+// ---------- DATA ----------
+const phrasals = [
+  {verb:"look up", meaning:"buscar información", example:"I need to look up that word."},
+  {verb:"give up", meaning:"rendirse", example:"Don't give up so easily."},
+  {verb:"run into", meaning:"encontrarse con alguien", example:"I ran into my teacher downtown."}
+];
+
+const readingDialogue = [
+  "👩 Ana: I tried to <span class='highlight' onclick='miniGame(\"look up\")'>look up</span> that word last night.",
+  "👨 Mark: Really? I almost <span class='highlight' onclick='miniGame(\"give up\")'>gave up</span> because it was confusing 😵",
+  "👩 Ana: Yeah, but don’t <span class='highlight' onclick='miniGame(\"give up\")'>give up</span> so fast!",
+  "👨 Mark: True. I actually <span class='highlight' onclick='miniGame(\"run into\")'>ran into</span> a native speaker today.",
+  "👩 Ana: No way! That’s awesome 😎",
+  "👨 Mark: Yep. Practice really pays off 💪"
+];
+
+const quizData = [
+  {q:"What does 'give up' mean?", a:["buscar","rendirse","encontrar"], c:1},
+  {q:"'Run into' means…", a:["huir","dormir","encontrarse"], c:2}
+];
+
+// ---------- NAV ----------
+function openSection(id){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ---------- PHRASE ----------
+function loadPhrasals(){
+  const el = document.getElementById("phrasals");
+  el.innerHTML = "<h2>📘 Phrasal Verbs</h2>";
+  phrasals.forEach((p,i)=>{
+    el.innerHTML += `
+      <div class="card">
+        <strong>${p.verb}</strong> – ${p.meaning}<br>
+        <em>${p.example}</em><br><br>
+        <button class="action" onclick="saveFavorite(${i})">⭐ Save</button>
+        <button class="action" onclick="tts('${p.verb}')">🔊</button>
+      </div>`;
+  });
+}
+
+// ---------- READING ----------
+function loadReading(){
+  const el = document.getElementById("reading");
+  el.innerHTML = "<h2>📖 Interactive Reading</h2>";
+  readingDialogue.forEach(l=>{
+    el.innerHTML += `<p class="card">${l}</p>`;
+  });
+}
+
+// ---------- MINI GAME ----------
+function miniGame(word){
+  const ans = prompt(`What does "${word}" mean?`);
+  if(ans && ans.toLowerCase().includes("buscar") || ans.toLowerCase().includes("rendirse") || ans.toLowerCase().includes("encontr")){
+    gainXP(15,"Correct");
+  } else {
+    alert("❌ Try again!");
+  }
+}
+
+// ---------- LISTENING ----------
+function loadListening(){
+  const el = document.getElementById("listening");
+  el.innerHTML = `
+    <h2>🎧 Listening</h2>
+    <div class="card">
+      I need to look up that word.<br><br>
+      <button class="action" onclick="tts('I need to look up that word')">▶ Play</button>
+    </div>`;
+}
+
+// ---------- SPEAKING ----------
+function startSpeaking(){
+  const target = "I will never give up learning English";
+  document.getElementById("speaking-sentence").textContent = target;
+
+  const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  rec.lang = "en-US";
+  rec.onresult = e=>{
+    const said = e.results[0][0].transcript;
+    document.getElementById("speaking-result").textContent = "You said: " + said;
+    gainXP(20,"Speaking");
+  };
+  rec.start();
+}
+
+// ---------- QUIZ ----------
+let qIndex = 0;
+function loadQuiz(){
+  const el = document.getElementById("quiz");
+  el.innerHTML = "<h2>🎯 Quiz</h2>";
+  if(qIndex >= quizData.length){
+    el.innerHTML += "<p class='card'>🏆 Quiz completed!</p>";
+    gainXP(30,"Quiz");
+    return;
+  }
+  const q = quizData[qIndex];
+  el.innerHTML += `<p>${q.q}</p>`;
+  q.a.forEach((opt,i)=>{
+    el.innerHTML += `<button class="action" onclick="answer(${i})">${opt}</button>`;
+  });
+}
+function answer(i){
+  if(i === quizData[qIndex].c) gainXP(20,"Quiz");
+  qIndex++;
+  loadQuiz();
+}
+
+// ---------- FAVORITES ----------
+function saveFavorite(i){
+  let fav = JSON.parse(localStorage.getItem("favorites")) || [];
+  fav.push(phrasals[i]);
+  localStorage.setItem("favorites", JSON.stringify(fav));
+  gainXP(5,"Saved");
+}
+function loadFavorites(){
+  const el = document.getElementById("favorites");
+  el.innerHTML = "<h2>⭐ My Words</h2>";
+  const fav = JSON.parse(localStorage.getItem("favorites")) || [];
+  fav.forEach(f=>{
+    el.innerHTML += `<div class="card">${f.verb} – ${f.meaning}</div>`;
+  });
+}
+
+// ---------- DAILY ----------
+function loadDaily(){
+  document.getElementById("daily").innerHTML = `
+    <h2>🔥 Daily Challenge</h2>
+    <div class="card">
+      Use <strong>2 phrasal verbs</strong> in your own sentence today 💪
+    </div>`;
+}
+
+// ---------- UTILS ----------
+function showBadge(text){
+  const b = document.createElement("div");
+  b.className="badge";
+  b.textContent=text;
+  document.body.appendChild(b);
+  setTimeout(()=>b.remove(),2500);
+}
+
+function tts(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang="en-US";
+  speechSynthesis.speak(u);
+}
+
+// ---------- INIT ----------
+window.onload = ()=>{
+  loadPhrasals();
+  loadReading();
+  loadListening();
+  loadQuiz();
+  loadFavorites();
+  loadDaily();
+  openSection("phrasals");
+};
